@@ -10,9 +10,11 @@ import pandas as pd
 from requests_html import HTMLSession
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed
 from datetime import datetime
 from dateutil import tz
 from BiliSpider import BiliSpider
+from threading import Lock
 
 User_agent=[
     "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; AcooBrowser; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
@@ -76,14 +78,15 @@ def get_lastest_videos(keyword):
     headers = {"User-Agent": random.choice(User_agent)}
 
     page_num = 1
-    MAX_PAGE_NUM = 10
+    MAX_PAGE_NUM = 4
+    #MAX_PAGE_NUM = 10
 
     within_one_hour = True
 
     # Page by Page, quit the loop while finding something beyond 24 hours
     while(page_num <= MAX_PAGE_NUM and within_one_hour):
 
-        print(page_num)
+        # print(page_num)
 
         search_page = requests.get(search_url + str(page_num), headers=headers, proxies=random.choice(proxy))
         search_page_html = search_page.text # html for the current search page
@@ -93,16 +96,20 @@ def get_lastest_videos(keyword):
 
         for bv in bv_list:
 
-            # make this multi-threaded?
-            video_page_url = "https://www.bilibili.com/video/" + str(bv)
-            video_page = requests.get(video_page_url, headers=headers, proxies=random.choice(proxy))
-            video_page_html = video_page.text
-            publish_time_from_now = time_from_now(publish_time(video_page_html))
+            try:
+                # make this multi-threaded?
+                video_page_url = "https://www.bilibili.com/video/" + str(bv)
+                video_page = requests.get(video_page_url, headers=headers, proxies=random.choice(proxy))
+                video_page_html = video_page.text
+                publish_time_from_now = time_from_now(publish_time(video_page_html))
 
-            if (to_hours(publish_time_from_now) > 0):
-                within_one_hour = False
-            else:
-                videos.append(bv)
+                if (to_hours(publish_time_from_now) > 0):
+                    within_one_hour = False
+                else:
+                    videos.append(bv)
+
+            except:
+                print("An error occured in get_lastest_videos() \n")
 
         page_num += 1
 
@@ -136,16 +143,19 @@ def publish_time(video_page_html):
     return standardized_time
 
 
+def china_time_now():
+    now = datetime.utcnow()
+    now = now.replace(tzinfo=tz.gettz('UTC'))
+    china_time_now = now.astimezone(tz.gettz('Asia/Shanghai'))
+    return china_time_now
+
+
 def time_from_now(china_time_past):
     '''
     Given a time object in china timezone, return the time from now to
     that time.
     '''
-    now = datetime.utcnow()
-    now = now.replace(tzinfo=tz.gettz('UTC'))
-    china_time_now = now.astimezone(tz.gettz('Asia/Shanghai'))
-
-    return china_time_now - china_time_past
+    return china_time_now() - china_time_past
 
 
 def collect_video_stat(bv):
@@ -162,53 +172,61 @@ def collect_video_stat(bv):
 
     stat["bv"] = bv
 
-    bili = BiliSpider()
-    video_json = bili.get_video_stat(bv)
-    data = video_json['data']
+    try:
+        bili = BiliSpider()
+        video_json = bili.get_video_stat(bv)
+        data = video_json['data']
 
-    view = data['View'] # basic info about this video
-    tags = data['Tags'] # information about the tags of this video
-    card = data['Card'] # information about uploader
+        view = data['View'] # basic info about this video
+        tags = data['Tags'] # information about the tags of this video
+        card = data['Card'] # information about uploader
 
-    # meaning of these keywords are here: https://github.com/SocialSisterYi/bilibili-API-collect/blob/9c467bbebc0f28b5fe7372401b3203475e3f4d19/video/info.md
-    stat['copyright'] = view['copyright']
-    stat['ctime'] = view['ctime']
-    stat['pubdate'] = view['pubdate']
-    stat['dimension'] = view['dimension']
-    stat['duration'] = view['duration']
-    stat['is_story'] = view['is_story']
-    stat['cover_pic'] = view['pic']
-    stat['uploader_id'] = view['owner']['mid']
+        # meaning of these keywords are here: https://github.com/SocialSisterYi/bilibili-API-collect/blob/9c467bbebc0f28b5fe7372401b3203475e3f4d19/video/info.md
+        stat['copyright'] = view['copyright']
+        stat['ctime'] = view['ctime']
+        stat['pubdate'] = view['pubdate']
+        stat['dimension'] = view['dimension']
+        stat['duration'] = view['duration']
+        stat['is_story'] = view['is_story']
+        stat['cover_pic'] = view['pic']
+        stat['uploader_id'] = view['owner']['mid']
 
-    stat['is_cooperation'] = view['rights']['is_cooperation']
-    stat['is_movie'] = view['rights']['movie']
-    stat['no_reprint'] = view['rights']['no_reprint']
-    stat['no_share'] = view['rights']['no_share']
-    stat['hd5'] = view['rights']['hd5']
-    stat['is_360'] = view['rights']['is_360']
-    stat['is_stein_gate'] = view['rights']['is_stein_gate']
-    stat['pgc_pay'] = view['rights']['pay']
-    stat['ugc_pay'] = view['rights']['ugc_pay']
+        stat['is_cooperation'] = view['rights']['is_cooperation']
+        stat['is_movie'] = view['rights']['movie']
+        stat['no_reprint'] = view['rights']['no_reprint']
+        stat['no_share'] = view['rights']['no_share']
+        stat['hd5'] = view['rights']['hd5']
+        stat['is_360'] = view['rights']['is_360']
+        stat['is_stein_gate'] = view['rights']['is_stein_gate']
+        stat['pgc_pay'] = view['rights']['pay']
+        stat['ugc_pay'] = view['rights']['ugc_pay']
 
-    stat['view'] = view['stat']['view']
-    stat['coin'] = view['stat']['coin']
-    stat['danmu'] = view['stat']['danmaku']
-    stat['favorite'] = view['stat']['favorite']
-    stat['like'] = view['stat']['like']
-    stat['share'] = view['stat']['share']
-    stat['reply'] = view['stat']['reply']
-    stat['his_rank'] = view['stat']['his_rank']
-    stat['now_rank'] = view['stat']['now_rank']
-    stat['argue_msg'] = view['stat']['argue_msg']
+        stat['view'] = view['stat']['view']
+        stat['coin'] = view['stat']['coin']
+        stat['danmu'] = view['stat']['danmaku']
+        stat['favorite'] = view['stat']['favorite']
+        stat['like'] = view['stat']['like']
+        stat['share'] = view['stat']['share']
+        stat['reply'] = view['stat']['reply']
+        stat['his_rank'] = view['stat']['his_rank']
+        stat['now_rank'] = view['stat']['now_rank']
+        stat['argue_msg'] = view['stat']['argue_msg']
 
-    stat['tid'] = view['tid']
-    stat['tname'] = view['tname']
-    stat['title'] = view['title']
-    stat['videos'] = view['videos'] # total number of videos in this collection
+        stat['tid'] = view['tid']
+        stat['tname'] = view['tname']
+        stat['title'] = view['title']
+        stat['videos'] = view['videos'] # total number of videos in this collection
 
-    stat['tags_stat'] = collect_tag_stat(tags)
+        stat['tags_stat'] = collect_tag_stat(tags)
 
-    stat.update(collect_uploader_stat(card))
+        stat.update(collect_uploader_stat(card))
+    except:
+        print("An error occured in the main part of collect_video_stat() \n")
+
+    try:
+        stat['get_time'] = china_time_now().strftime("%m/%d/%Y, %H:%M:%S")
+    except:
+        print("An error occured in the ----get_time---- part of collect_video_stat() \n")
 
     return stat
 
@@ -261,27 +279,70 @@ def collect_uploader_stat(card):
     return uploader_stat
 
 
-def main():
-    # keywords = ['ipad', 'apple watch', 'minecraft', 'LOL', '恋爱', '综艺', '王菲', '弹唱']
-    keywords = ['ipad']
+def simple_progress_indicator(result):
+    print('.', end='', flush=True)
 
+
+def progress_indicator(future):
+    global lock, tasks_total, tasks_completed
+    # obtain the lock
+    with lock:
+        # update the counter
+        tasks_completed += 1
+        # report progress
+        print(f'{tasks_completed}/{tasks_total} completed, {tasks_total-tasks_completed} remain.')
+
+
+
+def main():
+    keywords = ['ipad', 'apple watch', 'minecraft', 'LOL', '恋爱', '综艺', '王菲', '弹唱']
+    #keywords = ['ipad']
+
+    # Get videos published within the past 1 hour from the search results using keywords
     print("BEGIN SCRAPING ... \n")
 
-    with ThreadPoolExecutor(max_workers=100) as p:
-        results = p.map(get_lastest_videos, keywords)
+    # with ThreadPoolExecutor(max_workers=100) as p:
+    #     results = p.map(get_lastest_videos, keywords)
+    #
+    #     for result in results:
+    #         result.add_done_callback(progress_indicator)
+
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        futures = [executor.submit(get_lastest_videos, keyword) for keyword in keywords]
+
+        for future in futures:
+            future.add_done_callback(progress_indicator)
 
     print("DONE WITH SCRAPING ... \n")
 
 
+    # Remove Duplicates of BVid
+    bv_list = set()
+
+    for future in as_completed(futures):
+        bv_list.update(future.result())
+
+    total = len(bv_list)
+
+    print("Total number of videos (without duplicates): " + str(total) + "\n")
+
+
+    # Collect video stats for each BVid and write into a file
     print("BEGIN WRITING INTO FILES ... \n")
+
+    with ThreadPoolExecutor(max_workers=100) as p:
+        results = p.map(collect_video_stat, bv_list)
 
     # 'a' = append mode
     with open("output.txt", "a") as file:
         for result in results:
-            for bv in result:
-                file.write(json.dumps(collect_video_stat(bv), indent=4))
-                file.write("\n\n\n\n\n")
+            file.write(json.dumps(result, indent=4))
+            file.write("\n\n\n\n\n")
 
     print("DONE WITH WRITING INTO FILES :) \n")
+
+lock = Lock()
+tasks_total = 8
+tasks_completed = 0
 
 main()
