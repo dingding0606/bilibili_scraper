@@ -2,11 +2,13 @@ import requests
 import json
 import random
 import pprint
+from time import sleep
 
 class BiliSpider:
 
     def __init__(self):
         self.get_video_stat_url = 'http://api.bilibili.com/x/web-interface/view/detail'
+        self.get_video_basic_stat_url = 'http://api.bilibili.com/x/web-interface/view'
 
         self.user_agent=[
             "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; AcooBrowser; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
@@ -48,12 +50,43 @@ class BiliSpider:
             'HTTP':'202.108.22.5:80',
             'HTTPS':'202.108.22.5:80'
             },
+            {
+            'HTTP':'117.251.103.186:8080',
+            'HTTPS':'117.251.103.186:8080'
+            },
+            {
+            'HTTP':'208.82.61.38:3128',
+            'HTTPS':'208.82.61.38:3128'
+            },
+            {
+            'HTTP':'64.29.86.251:3129',
+            'HTTPS':'64.29.86.251:3129'
+            },
+            {
+            'HTTP':'155.4.244.218:80',
+            'HTTPS':'155.4.244.218:80'
+            },
+            {
+            'HTTP':'208.82.61.13:3128',
+            'HTTPS':'208.82.61.13:3128'
+            },
         ]
 
 
     def _get_api(self, api_url, params=None):
-        headers = {"User-Agent": random.choice(self.user_agent)}
-        res = requests.get(api_url, params=params, headers=headers, proxies=random.choice(self.proxy))
+        trail = 0
+        MAX_TRIALS = 5
+
+        while trail < MAX_TRIALS:
+            headers = {"User-Agent": random.choice(self.user_agent)}
+            try:
+                trail += 1
+                res = requests.get(api_url, params=params, headers=headers, proxies=random.choice(self.proxy), timeout=10)
+                break
+            except requests.exceptions.ConnectionError:
+                print("requests.exceptions.ConnectionError ERROR occured. Will sleep for 5 - 10 sec")
+                sleep(random.randint(5,10) * trail)
+
         return res.json()
 
     def get_video_stat(self, bvid):
@@ -67,9 +100,20 @@ class BiliSpider:
 
         return self._get_api(self.get_video_stat_url, params)
 
+    def get_basic_video_stat(self, bvid):
+        '''
+        bvid: BV number of a video
+        return: a dictionary containing basic video stats
+        '''
+        params = {
+            'bvid': bvid,
+        }
+
+        return self._get_api(self.get_video_basic_stat_url, params)
+
 
 if __name__ == '__main__':
     bili = BiliSpider()
     pp = pprint.PrettyPrinter(indent=4)
-    bvid = 'BV1Q441187Yw'
-    pp.pprint(bili.get_video_stat(bvid)['data']['Card'])
+    bvid = 'BV1od4y147Tr'
+    pp.pprint(bili.get_basic_video_stat(bvid)['data'])

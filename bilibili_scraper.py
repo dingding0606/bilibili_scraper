@@ -15,6 +15,7 @@ from datetime import datetime
 from dateutil import tz
 from BiliSpider import BiliSpider
 from threading import Lock
+from time import sleep
 
 User_agent=[
     "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; AcooBrowser; .NET CLR 1.1.4322; .NET CLR 2.0.50727)",
@@ -56,13 +57,36 @@ proxy = [
     'HTTP':'202.108.22.5:80',
     'HTTPS':'202.108.22.5:80'
     },
+    {
+    'HTTP':'117.251.103.186:8080',
+    'HTTPS':'117.251.103.186:8080'
+    },
+    {
+    'HTTP':'208.82.61.38:3128',
+    'HTTPS':'208.82.61.38:3128'
+    },
+    {
+    'HTTP':'64.29.86.251:3129',
+    'HTTPS':'64.29.86.251:3129'
+    },
+    {
+    'HTTP':'155.4.244.218:80',
+    'HTTPS':'155.4.244.218:80'
+    },
+    {
+    'HTTP':'208.82.61.13:3128',
+    'HTTPS':'208.82.61.13:3128'
+    },
 ]
+# #
+# proxy = [
+#     {
+#     'http':'http://198.27.74.6:9300',
+#     'https':'http://198.27.74.6:9300',
+#     },
+# ]
 
-def get_keywords():
-    '''
-    Return a list of keywords that we would like to search
-    '''
-    pass
+
 
 def get_lastest_videos(keyword):
     '''
@@ -71,49 +95,78 @@ def get_lastest_videos(keyword):
     published within 1 hour.
     '''
 
+    sleep(random.randint(1,5))
+
     videos = []
 
     search_url = "https://search.bilibili.com/all?keyword=" + keyword + "&order=pubdate" + "&page="
     bv_regex = "<a href=\"//www.bilibili.com/video/(.*?)\?from=search"
-    headers = {"User-Agent": random.choice(User_agent)}
+    # headers = {"User-Agent": random.choice(User_agent)}
 
     page_num = 1
-    MAX_PAGE_NUM = 4
-    #MAX_PAGE_NUM = 10
+    MAX_PAGE_NUM = 5
 
     within_one_hour = True
 
     # Page by Page, quit the loop while finding something beyond 24 hours
     while(page_num <= MAX_PAGE_NUM and within_one_hour):
 
-        # print(page_num)
+        page_trail = 0
+        PAGE_MAX_TRIALS = 5
+        bv_list = []
 
-        search_page = requests.get(search_url + str(page_num), headers=headers, proxies=random.choice(proxy))
-        search_page_html = search_page.text # html for the current search page
-
-        pattern = re.compile(bv_regex, re.S)
-        bv_list = pattern.findall(search_page_html) # bv_list contains all the BV numbers (video ids) in the current page
-
-        for bv in bv_list:
-
+        while page_trail < PAGE_MAX_TRIALS and len(bv_list) == 0:
             try:
-                # make this multi-threaded?
-                video_page_url = "https://www.bilibili.com/video/" + str(bv)
-                video_page = requests.get(video_page_url, headers=headers, proxies=random.choice(proxy))
-                video_page_html = video_page.text
-                publish_time_from_now = time_from_now(publish_time(video_page_html))
+                page_trail += 1
+                headers = {"User-Agent": random.choice(User_agent)}
+                search_page = requests.get(search_url + str(page_num), headers=headers, proxies=random.choice(proxy), timeout=15)
+                search_page_html = search_page.text # html for the current search page
+                pattern = re.compile(bv_regex, re.S)
+                bv_list = pattern.findall(search_page_html) # bv_list contains all the BV numbers (video ids) in the current page
 
-                if (to_hours(publish_time_from_now) > 0):
-                    within_one_hour = False
-                else:
-                    videos.append(bv)
+            except Exception as e:
+                print("Oops....!", e.__class__, "occurred.")
+                sleep(random.randint(5,10) * page_trail)
 
-            except:
-                print("An error occured in get_lastest_videos() \n")
+        print("Length of list: " + str(len(bv_list)))
+
+        # From the BVs in this page, select BVs that are within start_time and end_time
+        for bv in bv_list:
+            sleep(random.randint(1,5))
+
+            trail = 0
+            MAX_TRIALS = 5
+
+            while trail < MAX_TRIALS:
+                headers = {"User-Agent": random.choice(User_agent)}
+                try:
+                    trail += 1
+
+                    video_page_url = "https://www.bilibili.com/video/" + str(bv)
+                    video_page = requests.get(video_page_url, proxies=random.choice(proxy), headers=headers, timeout=15)
+                    video_page_html = video_page.text
+                    publish_time_from_now = time_from_now(publish_time(video_page_html))
+
+                    if (to_hours(publish_time_from_now) > 0):
+                        within_one_hour = False
+                    else:
+                        videos.append(bv)
+
+                    break
+                except Exception as e:
+                    print("Oops!", e.__class__, "occurred.")
+                    sleep(random.randint(3,6) * trail)
 
         page_num += 1
 
+    # directly write into this file...
+    with bv_file_lock:
+        with open("BV_list_using_tunnel.txt", "a") as file:
+            for bv in videos:
+                file.write(bv + "\n")
+
     # a list of bv's
+    print(videos)
     return videos
 
 
@@ -284,9 +337,9 @@ def simple_progress_indicator(result):
 
 
 def progress_indicator(future):
-    global lock, tasks_total, tasks_completed
+    global progress_lock, tasks_total, tasks_completed
     # obtain the lock
-    with lock:
+    with progress_lock:
         # update the counter
         tasks_completed += 1
         # report progress
@@ -295,19 +348,46 @@ def progress_indicator(future):
 
 
 def main():
-    keywords = ['ipad', 'apple watch', 'minecraft', 'LOL', '恋爱', '综艺', '王菲', '弹唱']
-    #keywords = ['ipad']
+    # Get keywords to search for from file
+    KEYWORD_FILE = 'tag_names.txt'
+
+    keywords = []
+
+    with open(KEYWORD_FILE) as file:
+        for line in file:
+            keywords.append(line.rstrip())
+
+    must_include_keywords = ['MAD', 'AMV', 'MMD', '3D', '短片', '手书', '配音', '手办', '模玩', '特摄', '动漫杂谈',
+                '综合', '连载动画', '完结动画', '资讯', '官方延伸', '新番时间表', '番剧索引',
+                '原创音乐', '翻唱', '演奏', 'VOCALOID', 'UTAU', '音乐现场', 'MV', '乐评盘点',
+                '音乐教学', '音乐综合', '说唱', '国产动画', '国产原创相关', '布袋戏',
+                '动态漫', '广播剧', '国产动画索引', '宅舞', '街舞',
+                '明星舞蹈', '中国舞', '舞蹈综合', '舞蹈教程', '单机游戏', '电子竞技',
+                '手机游戏', '网络游戏', '桌游棋牌', 'GMV', '音游', 'Mugen', '游戏赛事',
+                '科学科普', '社科', '法律', '心理', '人文历史', '财经商业', '校园学习', '职业职场',
+                '设计·创意', '野生技能协会', '数码', '软件应用', '计算机技术', '科工机械',
+                '极客DIY', '搞笑', '亲子', '出行', '三农', '家居房产', '手工', '绘画',
+                '日常', '鬼畜调教', '音MAD', '人力VOCALOID', '鬼畜剧场', '教程演示',
+                '美妆护肤', '仿妆cos', '穿搭', '时尚潮流', '热点', '环球', '社会',
+                '综合', '综艺', '娱乐杂谈', '粉丝创作', '明星综合', '影视杂谈',
+                '影视剪辑', '小剧场', '预告·资讯', '纪录片', '电影', '电视剧',
+                '虚拟UP主', '搞笑', '美食', '动物圈', '单机游戏', '运动', '汽车',
+                'VLOG', '全部', '网游', '手游', '单机', '娱乐', '电台', '虚拟',
+                '生活', '学习', '影视杂谈', '影视剪辑', '小剧场', '预告']
+
+    keywords = random.sample(keywords, 500)
+
+    keywords = must_include_keywords + keywords
+
+    print("Total number of keywords: " + str(len(keywords)))
 
     # Get videos published within the past 1 hour from the search results using keywords
     print("BEGIN SCRAPING ... \n")
 
-    # with ThreadPoolExecutor(max_workers=100) as p:
-    #     results = p.map(get_lastest_videos, keywords)
-    #
-    #     for result in results:
-    #         result.add_done_callback(progress_indicator)
+    # for keyword in keywords:
+    #     get_lastest_videos(keyword)
 
-    with ThreadPoolExecutor(max_workers=100) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(get_lastest_videos, keyword) for keyword in keywords]
 
         for future in futures:
@@ -315,34 +395,41 @@ def main():
 
     print("DONE WITH SCRAPING ... \n")
 
+    #
+    # # Remove Duplicates of BVid
+    # bv_list = set()
+    #
+    # for future in as_completed(futures):
+    #     bv_list.update(future.result())
+    #
+    #
+    # # append all the bv numbers into this file
+    # with open("BV_list.txt", "a") as file:
+    #     for bv in bv_list:
+    #         file.write(bv + "\n")
+    #
+    #
+    # total = len(bv_list)
+    # print("Total number of videos (without duplicates): " + str(total) + "\n")
+    #
+    #
+    # # Collect video stats for each BVid and write into a file
+    # print("BEGIN WRITING INTO FILES ... \n")
+    #
+    # with ThreadPoolExecutor(max_workers=100) as p:
+    #     results = p.map(collect_video_stat, bv_list)
+    #
+    # # 'a' = append mode
+    # with open("dc_output.txt", "a") as file:
+    #     for result in results:
+    #         file.write(json.dumps(result, indent=4))
+    #         file.write("\n\n\n\n\n")
+    #
+    # print("DONE WITH WRITING INTO FILES :) \n")
 
-    # Remove Duplicates of BVid
-    bv_list = set()
-
-    for future in as_completed(futures):
-        bv_list.update(future.result())
-
-    total = len(bv_list)
-
-    print("Total number of videos (without duplicates): " + str(total) + "\n")
-
-
-    # Collect video stats for each BVid and write into a file
-    print("BEGIN WRITING INTO FILES ... \n")
-
-    with ThreadPoolExecutor(max_workers=100) as p:
-        results = p.map(collect_video_stat, bv_list)
-
-    # 'a' = append mode
-    with open("output.txt", "a") as file:
-        for result in results:
-            file.write(json.dumps(result, indent=4))
-            file.write("\n\n\n\n\n")
-
-    print("DONE WITH WRITING INTO FILES :) \n")
-
-lock = Lock()
-tasks_total = 8
+progress_lock = Lock()
+bv_file_lock = Lock()
+tasks_total = 5153
 tasks_completed = 0
 
 main()
