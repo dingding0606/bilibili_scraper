@@ -131,11 +131,11 @@ def collect_video_stat(bv):
         print("An error occured in the ----get_time---- part of collect_video_stat() \n")
 
     with output_lock:
-        with open("FINAL_OUTPUT.txt", "a") as file:
+        with open("FINAL_OUTPUT_DAY2.txt", "a") as file:
             file.write(json.dumps(stat, indent=4))
             file.write("\n\n\n\n\n")
 
-        with open("FINAL_OUTPUT_status.txt", "a") as file:
+        with open("FINAL_OUTPUT_DAY2_status.txt", "a") as file:
             file.write(bv)
             file.write("  " + str(len(str(stat))))
             file.write("\n")

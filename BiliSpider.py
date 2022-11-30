@@ -116,4 +116,4 @@ if __name__ == '__main__':
     bili = BiliSpider()
     pp = pprint.PrettyPrinter(indent=4)
     bvid = 'BV1od4y147Tr'
-    pp.pprint(bili.get_basic_video_stat(bvid)['data'])
+    pp.pprint(bili.get_basic_video_stat(bvid)['data']['desc'])
