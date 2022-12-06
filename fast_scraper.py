@@ -87,7 +87,7 @@ def get_lastest_videos(keyword, start_time, end_time):
     published within 1 hour.
     '''
 
-    sleep(random.randint(1,5))
+    sleep(random.randint(0,5))
 
     bili = BiliSpider()
 
@@ -125,7 +125,7 @@ def get_lastest_videos(keyword, start_time, end_time):
 
         # From the BVs in this page, select BVs that are within start_time and end_time
         for bv in bv_list:
-            sleep(random.randint(1,5))
+            sleep(random.randint(0,5))
 
             try:
                 # print(bv)
@@ -140,13 +140,13 @@ def get_lastest_videos(keyword, start_time, end_time):
 
             except Exception as e:
                 print("Oops!", e.__class__, "occurred.")
-                sleep(random.randint(10,20) * trail)
+                sleep(random.randint(10,50) * trail)
 
         page_num += 1
 
     # directly write into this file...
     with bv_file_lock:
-        with open("NEW_FINAL_BV_LIST.txt", "a") as file:
+        with open("append_NEW_FINAL_BV_LIST.txt", "a") as file:
             for bv in videos:
                 file.write(bv + "\n")
 
@@ -337,10 +337,10 @@ def progress_indicator(future):
 
 def main():
     one_hour_in_milliseconds = 3600
-    end_time = int(time.time())
-    start_time = end_time - one_hour_in_milliseconds
+    end_time = 1669999540 # int(time.time())
+    start_time = 1669995940 # end_time - one_hour_in_milliseconds
 
-    with open("NEW_FINAL_BV_LIST.txt", "a") as file:
+    with open("append_NEW_FINAL_BV_LIST.txt", "a") as file:
         file.write(str(start_time) + "\n")
         file.write(str(end_time) + "\n")
 
@@ -353,26 +353,29 @@ def main():
         for line in file:
             keywords.append(line.rstrip())
 
-    must_include_keywords = ['MAD', 'AMV', 'MMD', '3D', '短片', '手书', '配音', '手办', '模玩', '特摄', '动漫杂谈',
-                '综合', '连载动画', '完结动画', '资讯', '官方延伸', '新番时间表', '番剧索引',
-                '原创音乐', '翻唱', '演奏', 'VOCALOID', 'UTAU', '音乐现场', 'MV', '乐评盘点',
-                '音乐教学', '音乐综合', '说唱', '国产动画', '国产原创相关', '布袋戏',
-                '动态漫', '广播剧', '国产动画索引', '宅舞', '街舞',
-                '明星舞蹈', '中国舞', '舞蹈综合', '舞蹈教程', '单机游戏', '电子竞技',
-                '手机游戏', '网络游戏', '桌游棋牌', 'GMV', '音游', 'Mugen', '游戏赛事',
-                '科学科普', '社科', '法律', '心理', '人文历史', '财经商业', '校园学习', '职业职场',
-                '设计·创意', '野生技能协会', '数码', '软件应用', '计算机技术', '科工机械',
-                '极客DIY', '搞笑', '亲子', '出行', '三农', '家居房产', '手工', '绘画',
-                '日常', '鬼畜调教', '音MAD', '人力VOCALOID', '鬼畜剧场', '教程演示',
-                '美妆护肤', '仿妆cos', '穿搭', '时尚潮流', '热点', '环球', '社会',
-                '综合', '综艺', '娱乐杂谈', '粉丝创作', '明星综合', '影视杂谈',
-                '影视剪辑', '小剧场', '预告·资讯', '纪录片', '电影', '电视剧',
-                '虚拟UP主', '搞笑', '美食', '动物圈', '单机游戏', '运动', '汽车',
-                'VLOG', '全部', '网游', '手游', '单机', '娱乐', '电台', '虚拟',
-                '生活', '学习', '影视杂谈', '影视剪辑', '小剧场', '预告']
+    # must_include_keywords = ['MAD', 'AMV', 'MMD', '3D', '短片', '手书', '配音', '手办', '模玩', '特摄', '动漫杂谈',
+    #             '综合', '连载动画', '完结动画', '资讯', '官方延伸', '新番时间表', '番剧索引',
+    #             '原创音乐', '翻唱', '演奏', 'VOCALOID', 'UTAU', '音乐现场', 'MV', '乐评盘点',
+    #             '音乐教学', '音乐综合', '说唱', '国产动画', '国产原创相关', '布袋戏',
+    #             '动态漫', '广播剧', '国产动画索引', '宅舞', '街舞',
+    #             '明星舞蹈', '中国舞', '舞蹈综合', '舞蹈教程', '单机游戏', '电子竞技',
+    #             '手机游戏', '网络游戏', '桌游棋牌', 'GMV', '音游', 'Mugen', '游戏赛事',
+    #             '科学科普', '社科', '法律', '心理', '人文历史', '财经商业', '校园学习', '职业职场',
+    #             '设计·创意', '野生技能协会', '数码', '软件应用', '计算机技术', '科工机械',
+    #             '极客DIY', '搞笑', '亲子', '出行', '三农', '家居房产', '手工', '绘画',
+    #             '日常', '鬼畜调教', '音MAD', '人力VOCALOID', '鬼畜剧场', '教程演示',
+    #             '美妆护肤', '仿妆cos', '穿搭', '时尚潮流', '热点', '环球', '社会',
+    #             '综合', '综艺', '娱乐杂谈', '粉丝创作', '明星综合', '影视杂谈',
+    #             '影视剪辑', '小剧场', '预告·资讯', '纪录片', '电影', '电视剧',
+    #             '虚拟UP主', '搞笑', '美食', '动物圈', '单机游戏', '运动', '汽车',
+    #             'VLOG', '全部', '网游', '手游', '单机', '娱乐', '电台', '虚拟',
+    #             '生活', '学习', '影视杂谈', '影视剪辑', '小剧场', '预告']
 
+    must_include_keywords = []
 
     keywords = must_include_keywords + keywords
+
+    random.shuffle(keywords)
 
     print("Total number of keywords: " + str(len(keywords)))
 
@@ -382,7 +385,7 @@ def main():
     # for keyword in keywords:
     #     get_lastest_videos(keyword, start_time, end_time)
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+    with ThreadPoolExecutor(max_workers=5) as executor:
         futures = [executor.submit(get_lastest_videos, keyword, start_time, end_time) for keyword in keywords]
 
         for future in futures:

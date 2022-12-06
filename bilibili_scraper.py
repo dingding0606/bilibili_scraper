@@ -104,7 +104,7 @@ def get_lastest_videos(keyword):
     # headers = {"User-Agent": random.choice(User_agent)}
 
     page_num = 1
-    MAX_PAGE_NUM = 5
+    MAX_PAGE_NUM = 33
 
     within_one_hour = True
 
@@ -375,7 +375,7 @@ def main():
                 'VLOG', '全部', '网游', '手游', '单机', '娱乐', '电台', '虚拟',
                 '生活', '学习', '影视杂谈', '影视剪辑', '小剧场', '预告']
 
-    keywords = random.sample(keywords, 500)
+    keywords = random.sample(keywords, 3000)
 
     keywords = must_include_keywords + keywords
 

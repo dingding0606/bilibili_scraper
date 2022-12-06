@@ -87,7 +87,7 @@ def get_lastest_videos(keyword, start_time, end_time):
     published within 1 hour.
     '''
 
-    sleep(random.randint(0,1))
+    sleep(random.randint(1,5))
 
     bili = BiliSpider()
 
@@ -132,7 +132,7 @@ def get_lastest_videos(keyword, start_time, end_time):
 
         # From the BVs in this page, select BVs that are within start_time and end_time
         for bv in bv_list:
-            sleep(random.randint(0,2))
+            sleep(random.randint(1,5))
 
             try:
                 # print(bv)
@@ -344,8 +344,8 @@ def progress_indicator(future):
 
 def main():
     one_hour_in_milliseconds = 3600
-    end_time = 1669645997
-    start_time = 1669642397
+    end_time = int(time.time())
+    start_time = end_time - one_hour_in_milliseconds
 
     # 1669642397
     # 1669645997
