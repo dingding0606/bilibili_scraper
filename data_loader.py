@@ -17,14 +17,14 @@ def memeness(title):
     '''
     return title.count(' ')
 
-def load_bilibili_data():
+def load_bilibili_data(standardize=True):
     '''
     Helper method for loading Bilibili video data
     '''
 
     all_variables = []
 
-    data = pd.read_csv("chosen_dataset/DATA_ONE_DAY_CSV.csv")
+    data = pd.read_csv("chosen_dataset/DATA_DEC6_CSV.csv")
 
     # copyright: 1 = original videos, 2 = reposted videos
     data['copyright_original'] = data.apply(lambda row: 1 if (row.copyright == 1) else 0, axis=1)
@@ -88,8 +88,8 @@ def load_bilibili_data():
     # Train, Test, Validation Split
     Xmat = data_clean.drop(columns=["final_view"]) #.to_numpy()
     Y = data_clean["final_view"] #.to_numpy()
-    Xmat_train, Xmat_test, Y_train, Y_test = train_test_split(Xmat, Y, test_size=0.2, random_state=42)
-    Xmat_train, Xmat_val, Y_train, Y_val = train_test_split(Xmat_train, Y_train, test_size=0.2, random_state=42)
+    Xmat_train_and_val, Xmat_test, Y_train_and_val, Y_test = train_test_split(Xmat, Y, test_size=0.2, random_state=42)
+    Xmat_train, Xmat_val, Y_train, Y_val = train_test_split(Xmat_train_and_val, Y_train_and_val, test_size=0.2, random_state=42)
 
     n, d = Xmat_train.shape
 
@@ -97,18 +97,34 @@ def load_bilibili_data():
                                 "copyright_original", "dim_is_horizontal",
                                 "up_sex_is_male", "up_sex_is_female", "up_sex_is_hidden"]
 
-    # Standardized the dataset using mean and std from training set
-    for (colname, colval) in Xmat_train.items():
+    # if degree_two_poly_terms:
+    #     for i in range(0, len(Xmat_train.columns)):
+    #         for j in range(i, len(Xmat_train.columns)):
+    #             feature_i = Xmat_train.columns[i]
+    #             feature_j = Xmat_train.columns[j]
+    #
+    #             # add interaction terms
+    #             inter_train = pd.DataFrame(Xmat_train[feature_i] * Xmat_train[feature_j], columns=[feature_i + ":" + feature_j])
+    #             Xmat_train = pd.concat([Xmat_train, inter_train], axis=1)
+                # Xmat_train[feature_i + ":" + feature_j] = Xmat_train[feature_i] * Xmat_train[feature_j]
+                # Xmat_train_and_val[feature_i + ":" + feature_j] = Xmat_train_and_val[feature_i] * Xmat_train_and_val[feature_j]
+                # Xmat_val[feature_i + ":" + feature_j] = Xmat_val[feature_i] * Xmat_val[feature_j]
+                # Xmat_test[feature_i + ":" + feature_j] = Xmat_test[feature_i] * Xmat_test[feature_j]
 
-        if colname not in no_need_to_standardize:
-            mean = colval.mean()
-            std = colval.std()
+    if standardize:
+        # Standardized the dataset using mean and std from training set
+        for (colname, colval) in Xmat_train.items():
 
-            Xmat_train[colname] = (Xmat_train[colname] - mean) / std
-            Xmat_val[colname] = (Xmat_val[colname] - mean) / std
-            Xmat_test[colname] = (Xmat_test[colname] - mean) / std
+            if colname not in no_need_to_standardize:
+                mean = colval.mean()
+                std = colval.std()
 
-    return Xmat_train.to_numpy(), Xmat_val.to_numpy(), Xmat_test.to_numpy(), Y_train.to_numpy(), Y_val.to_numpy(), Y_test.to_numpy()
+                Xmat_train[colname] = (Xmat_train[colname] - mean) / std
+                Xmat_train_and_val[colname] = (Xmat_train_and_val[colname] - mean) / std
+                Xmat_val[colname] = (Xmat_val[colname] - mean) / std
+                Xmat_test[colname] = (Xmat_test[colname] - mean) / std
+
+    return Xmat_train_and_val, Y_train_and_val, Xmat_train, Xmat_val, Xmat_test, Y_train, Y_val, Y_test
 
 
 load_bilibili_data()

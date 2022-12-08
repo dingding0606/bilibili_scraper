@@ -131,11 +131,11 @@ def collect_video_stat(bv):
         print("An error occured in the ----get_time---- part of collect_video_stat() \n")
 
     with output_lock:
-        with open("new_final_output_day1.txt", "a") as file:
+        with open("Dec6.txt", "a") as file:
             file.write(json.dumps(stat, indent=4))
             file.write("\n\n\n\n\n")
 
-        with open("new_final_output_day1_status.txt", "a") as file:
+        with open("Dec6_status.txt", "a") as file:
             file.write(bv)
             file.write("  " + str(len(str(stat))))
             file.write("\n")
@@ -206,7 +206,7 @@ def progress_indicator(future):
 def main():
 
     # read in BV lists and remove repeatitions
-    file1 = open('NEW_FINAL_BV_LIST.txt', 'r')
+    file1 = open('chosen_dataset/FINAL_BV_LIST.txt', 'r')
     lines = file1.readlines()
 
     bv_list = set()

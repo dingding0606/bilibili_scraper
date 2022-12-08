@@ -25,8 +25,8 @@ def compress_tag_info(tags_stat):
     return result
 
 
-FROM_FILE_NAME = "FINAL_OUTPUT_DAY3.txt"
-TO_FILE_NAME = "DATA_THREE_DAY_CSV.csv"
+FROM_FILE_NAME = "Dec6.txt"
+TO_FILE_NAME = "DATA_DEC6_CSV.csv"
 
 from_file = open(FROM_FILE_NAME, "r")
 
