@@ -1,0 +1,33 @@
+       duration  is_story  ...  up_sex_is_female  up_sex_is_hidden
+1     -0.069213         0  ...                 0                 1
+2     -0.068379         0  ...                 0                 1
+4     -0.081825         0  ...                 0                 0
+5     -0.051593         0  ...                 1                 0
+6     -0.020898         0  ...                 0                 1
+...         ...       ...  ...               ...               ...
+12169 -0.077560         0  ...                 0                 1
+12171 -0.052614         1  ...                 0                 1
+12172 -0.053541         0  ...                 0                 0
+12173 -0.071717         0  ...                 0                 0
+12174 -0.047420         0  ...                 0                 0
+
+[9741 rows x 29 columns]
+       duration  is_story  ...  up_sex_is_female  up_sex_is_hidden
+1     -0.069213         0  ...                 0                 1
+2     -0.068379         0  ...                 0                 1
+4     -0.081825         0  ...                 0                 0
+5     -0.051593         0  ...                 1                 0
+6     -0.020898         0  ...                 0                 1
+...         ...       ...  ...               ...               ...
+12169 -0.077560         0  ...                 0                 1
+12171 -0.052614         1  ...                 0                 1
+12172 -0.053541         0  ...                 0                 0
+12173 -0.071717         0  ...                 0                 0
+12174 -0.047420         0  ...                 0                 0
+
+[9741 rows x 29 columns]
+R-sqaured on training set: 0.8665620602991745
+R-sqaured on validation set: 0.7574572053860708
+[Best RF] R-sqaured on training set: 0.9304474235464689
+[Best RF] R-sqaured on validation set: 0.8874995529558244
+Fitting 1 folds for each of 66 candidates, totalling 66 fits

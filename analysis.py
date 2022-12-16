@@ -17,8 +17,12 @@ from sklearn.neural_network import MLPRegressor
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Activation, Dropout
+from tensorflow.keras.optimizers import SGD
+from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow_addons.metrics import RSquare
 import keras_tuner
+from sklearn.model_selection import cross_val_score
+from tensorflow.random import set_seed
 
 def fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val):
     # ==================================
@@ -37,24 +41,24 @@ def fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val):
 
     # squares
 
-    for feature in Xmat_train.columns:
-        Xmat_train[feature + "^2"] =  Xmat_train[feature].pow(2)
-        Xmat_val[feature + "^2"] =  Xmat_val[feature].pow(2)
+    # for feature in Xmat_train.columns:
+    #     Xmat_train[feature + "^2"] =  Xmat_train[feature].pow(2)
+    #     Xmat_val[feature + "^2"] =  Xmat_val[feature].pow(2)
+    #
+    # baseline_model.fit(Xmat_train, Y_train)
+    #
+    # # Obtain the coefficient of determination by calling the model with the score() function, then print the coefficient:
+    # r_squared_train = baseline_model.score(Xmat_train, Y_train)
+    # print('R-sqaured on training set:', r_squared_train)
+    #
+    # r_squared_val = baseline_model.score(Xmat_val, Y_val)
+    # print('R-sqaured on validation set:', r_squared_val)
+    #
+    #
+    # print(Xmat_train)
 
-    baseline_model.fit(Xmat_train, Y_train)
 
-    # Obtain the coefficient of determination by calling the model with the score() function, then print the coefficient:
-    r_squared_train = baseline_model.score(Xmat_train, Y_train)
-    print('R-sqaured on training set:', r_squared_train)
-
-    r_squared_val = baseline_model.score(Xmat_val, Y_val)
-    print('R-sqaured on validation set:', r_squared_val)
-
-
-    print(Xmat_train)
-
-
-def fit_polynomial_regression(Xmat_train_and_val, Y_train_and_val, split_index):
+def fit_polynomial_regression(ns_Xmat_train_and_val, ns_Y_train_and_val, split_index):
     # =====================
     # POLYNOMIAL REGRESSION
     # =====================
@@ -65,14 +69,14 @@ def fit_polynomial_regression(Xmat_train_and_val, Y_train_and_val, split_index):
     steps = [
         ('poly', PolynomialFeatures()),
         ('scalar', StandardScaler()),
-        ('model', Ridge()) #Lasso(alpha=0.9, max_iter=10000, fit_intercept=True))
+        ('model', Ridge(max_iter=10000)) #Lasso(alpha=0.9, max_iter=10000, fit_intercept=True))
     ]
 
     pipeline = Pipeline(steps)
 
     # =================== 1st Grid Search ===================
-    degrees = [2, 3]
-    alphas = [0.01, 0.1, 1, 10, 100, 1000, 10000, 30000, 40000, 50000, 60000]
+    degrees = [4]
+    alphas = [160000, 200000, 300000, 400000, 500000] # [0.01, 0.1, 1, 10, 100, 1000, 10000, 30000, 40000, 50000, 60000]
 
     param_grid = {
         "poly__degree" : degrees,
@@ -88,7 +92,7 @@ def fit_polynomial_regression(Xmat_train_and_val, Y_train_and_val, split_index):
                           cv=pds,
                           verbose=3)
 
-    search.fit(Xmat_train_and_val, Y_train_and_val)
+    search.fit(ns_Xmat_train_and_val, ns_Y_train_and_val)
 
     df_gridsearch = pd.DataFrame(search.cv_results_)
 
@@ -157,31 +161,32 @@ def fit_random_forest(Xmat_train_and_val, Y_train_and_val, split_index):
     # here are the values that a grid searched on, and here is the model with the best validation score.
 
     # Number of trees in random forest
-    n_estimators = [1, 10, 100, 1000, 10000] # [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+    n_estimators = [2000, 4000, 6000, 8000, 10000] # [int(x) for x in np.linspace(start = 100, stop = 2000, num = 6)]
 
     # Number of features to consider at every split
-    max_features = [1.0, 'sqrt'] # [1.0, 'sqrt']
+    max_features = ['sqrt'] # [1.0, 'sqrt']
 
     # Maximum number of levels in tree
-    max_depth = [10, 30, 60, 100] # [int(x) for x in np.linspace(10, 110, num = 11)]
+    max_depth = [] #[int(x) for x in np.linspace(10, 100, num = 10)]
     max_depth.append(None)
 
     # Minimum number of samples required to split a node
-    min_samples_split = [2, 5, 10]
+    # min_samples_split = [2, 5, 10]
 
     # Minimum number of samples required at each leaf node
-    min_samples_leaf = [1, 2, 4]
+    # min_samples_leaf = [1, 2, 4]
 
     # Method of selecting samples for training each tree
     bootstrap = [True] #[True, False]
 
     # Create the random grid
-    param_grid = {'n_estimators': n_estimators,
-                   'max_features': max_features,
-                   'max_depth': max_depth,
-                   'min_samples_split': min_samples_split,
-                   'min_samples_leaf': min_samples_leaf,
-                   'bootstrap': bootstrap}
+    param_grid = { 'n_estimators': n_estimators,
+                    'max_features': max_features,
+                    'max_depth': max_depth,
+                   # 'min_samples_split': min_samples_split,
+                   # 'min_samples_leaf': min_samples_leaf,
+                   'bootstrap': bootstrap,
+                   'random_state': [42]}
 
     rf = RandomForestRegressor()
 
@@ -198,7 +203,26 @@ def fit_random_forest(Xmat_train_and_val, Y_train_and_val, split_index):
 
     search.fit(Xmat_train_and_val, Y_train_and_val)
 
-    print(search.cv_results_)
+    # print(search.cv_results_)
+
+    scores = search.cv_results_['split0_test_score']
+
+    # Transform into the desired shape
+    scores = np.array(scores)
+    scores = np.transpose(np.vstack(np.split(scores, len(max_depth))))
+
+    # change None to 200 so that it is easier to plot
+    max_depth[-1] = 110
+    print("MAX DEPTH: ", max_depth)
+
+    # Plot using Matplotlib
+    for i, num_of_trees in enumerate(n_estimators):
+        plt.plot(max_depth, scores[i], label='m = ' + str(num_of_trees))
+
+    plt.legend()
+    plt.xlabel('Maximum Depth of Each Tree')
+    plt.ylabel('R Sqaured')
+    plt.show()
 
     return search.cv_results_
 
@@ -219,6 +243,25 @@ def fit_random_forest(Xmat_train_and_val, Y_train_and_val, split_index):
     #                                n_jobs=-1)
     #
     # rf_random.fit(Xmat_train_and_val, Y_train_and_val)
+
+
+def fit_best_random_forest(Xmat_train, Y_train, Xmat_val, Y_val, Xmat_train_and_val, Y_train_and_val, split_index):
+    model = RandomForestRegressor(bootstrap=True, max_depth=30, max_features=1.0, n_estimators=100, random_state=42)
+    model.fit(Xmat_train, Y_train)
+
+    # Obtain the coefficient of determination by calling the model with the score() function, then print the coefficient:
+    r_squared_train = model.score(Xmat_train, Y_train)
+    print('[Best RF] R-sqaured on training set:', r_squared_train)
+
+    r_squared_val = model.score(Xmat_val, Y_val)
+    print('[Best RF] R-sqaured on validation set:', r_squared_val)
+
+    pds = PredefinedSplit(test_fold = split_index)
+
+    cv_score = cross_val_score(model, Xmat_train_and_val, Y_train_and_val, cv=pds)
+    print(cv_score)
+
+    return pds
 
 
 def fit_neural_network_sklearn(Xmat_train, Y_train, Xmat_val, Y_val):
@@ -242,20 +285,28 @@ def fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val):
 
     1. the average difference between Y and Y_hat
     2. whether the ordering of the videos are preserved: e.g. does the actual top 10 popular videos got predicted to be top 10 with the same ordering?
+
+    [32, 16, 1], no dropout, relu, adam -> 0.81 on validation.
     '''
     model = Sequential()
-    model.add(Dense(32, input_dim=len(Xmat_train.columns), use_bias=True, bias_initializer="zeros", kernel_initializer='normal', activation='relu'))
+    model.add(Dense(256, input_dim=len(Xmat_train.columns), use_bias=True, bias_initializer="zeros", kernel_initializer='normal', activation='relu'))
     model.add(Dropout(0.2))
-    model.add(Dense(8, activation='relu'))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.2))
     model.add(Dense(1, activation='linear'))
-    model.compile(loss='mse', optimizer='adam', metrics=[RSquare()])
+
+    # set up an SGD optimizer with custom learning rate
+    sgd = SGD(learning_rate=0.1, clipvalue=0.1)
+
+    model.compile(loss='mse', optimizer=sgd, metrics=[RSquare()])
 
     model.summary()
 
+    num_of_rows = len(Xmat_train)
+
     history = model.fit(Xmat_train,
                         Y_train,
-                        batch_size=32,
+                        batch_size=num_of_rows,
                         epochs=2000,
                         validation_data=(Xmat_val, Y_val))
 
@@ -278,57 +329,120 @@ def fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val):
     # print(model.evaluate(Xmat_val, Y_val))
 
 
-def build_neural_network(hp, input_dim):
-    model = keras.Sequential()
 
-    '''
-    Some Default Values of Dense:
-        use_bias=True,
-        bias_initializer='zeros',
-        kernel_regularizer=None
-    '''
 
-    model.add(Dense(units=hp.Int("units", min_value=16, max_value=256, step=16),
-                    input_dim=input_dim,
+
+def grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val):
+
+    print("[STATUS] Starting Grid Search On Neural Nets")
+
+    tuner = keras_tuner.RandomSearch(
+        hypermodel=build_neural_network,
+        objective="val_loss",
+        max_trials=100,
+        executions_per_trial=2,
+        overwrite=True,
+        directory="tuner",
+        project_name="keras_nn_tuner",
+    )
+
+    # early_stopping_detector = EarlyStopping(monitor='r_square',
+    #                                         min_delta=0.01,
+    #                                         patience=50,
+    #                                         start_from_epoch=100)
+
+    tuner.search(Xmat_train,
+                 Y_train,
+                 batch_size=64,
+                 epochs=1000,
+                 validation_data=(Xmat_val, Y_val),
+                 #callbacks=[early_stopping_detector]
+                 )
+
+    print(tuner.results_summary())
+
+    # Get the top 3 models.
+    # models = tuner.get_best_models(num_models=3)
+    # best_model = models[0]
+    # # Build the model.
+    # # Needed for `Sequential` without specified `input_shape`.
+    # best_model.build(input_shape=(None, 28, 28))
+    # best_model.summary()
+
+
+
+
+def build_neural_network(hp):
+    INPUT_DIM = 29
+    model = Sequential()
+
+    # Tune the number of layers
+    # for i in range(hp.Int("num_layers", 1, 3)):
+    #     model.add(Dense(units=hp.Int(f"units_{i}", min_value=32, max_value=512, step=32),
+    #                     input_dim=input_dim,
+    #                     kernel_initializer='random_normal',
+    #                     activation='relu'))
+    #
+    #     if hp.Boolean("dropout"):
+    #         model.add(Dropout(rate=0.25))
+
+    apply_dropout = hp.Boolean("dropout")
+    dropout_prob = hp.Float("dropout_prob", min_value=0.1, max_value=0.5, step=0.1)
+
+    # Hidden Layer 1
+    model.add(Dense(units=hp.Int("First Hidden Layer", min_value=32, max_value=512, step=32),
+                    input_dim=INPUT_DIM,
                     kernel_initializer='random_normal',
                     activation='relu'))
 
-    model.add(Dense(units=hp.Int("units", min_value=8, max_value=32, step=8),
+    if apply_dropout:
+        model.add(Dropout(rate=dropout_prob))
+
+    # Hidden Layer 2
+    model.add(Dense(units=hp.Int("Second Hidden Layer", min_value=16, max_value=256, step=16),
                     kernel_initializer='random_normal',
                     activation='relu'))
+
+    if apply_dropout:
+        model.add(Dropout(rate=dropout_prob))
 
     # Output Layer
     model.add(Dense(1, activation='linear'))
 
-    model.compile(loss='mse', optimizer='adam', metrics=[RSquare()])
+    # Learning rate choices: 0.0001, 0.001, 0.01
+    learning_rate = hp.Float("lr", min_value=1e-4, max_value=1e-2, sampling="log")
+    sgd = SGD(learning_rate=learning_rate, clipvalue=0.5)
+
+    model.compile(loss='mse', optimizer=sgd, metrics=[RSquare()])
 
     return model
 
 
 def main():
 
+    # Set Tensorflow global random seed
+    set_seed(42)
+
     # All of those are pandas objects
     Xmat_train_and_val, Y_train_and_val, Xmat_train, Xmat_val, Xmat_test, Y_train, Y_val, Y_test = load_bilibili_data()
+
+    # ns_Xmat_train_and_val, ns_Y_train_and_val, ns_Xmat_train, ns_Xmat_val, ns_Xmat_test, ns_Y_train, ns_Y_val, ns_Y_test = load_bilibili_data(standardize=False)
 
     # Create a list where train data indices are -1 and validation data indices are 0
     split_index = [-1 if x in Xmat_train.index else 0 for x in Xmat_train_and_val.index]
 
-    fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val)
+    grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val)
 
-    fit_polynomial_regression(Xmat_train_and_val, Y_train_and_val, split_index)
+
+    # fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val)
     #
+    # fit_best_random_forest(Xmat_train, Y_train, Xmat_val, Y_val, Xmat_train_and_val, Y_train_and_val, split_index)
+
+    # fit_polynomial_regression(ns_Xmat_train_and_val, ns_Y_train_and_val, split_index)
+
     # fit_random_forest(Xmat_train_and_val, Y_train_and_val, split_index)
-    #
-    # fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val)
 
-    #
-    # for i in range(29, 40):
-    #     print("max_features = ", i)
-    #     forest = RandomForestRegressor(n_estimators=100, max_features=i)
-    #     forest.fit(Xmat_train, Y_train)
-    #     print('Training score: {}'.format(forest.score(Xmat_train, Y_train)))
-    #     print('Validation score: {}'.format(forest.score(Xmat_val, Y_val)))
-    #     print("\n")
+    # fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val)
 
 
 main()

@@ -87,6 +87,7 @@ def load_bilibili_data(standardize=True):
 
     # Train, Test, Validation Split
     Xmat = data_clean.drop(columns=["final_view"]) #.to_numpy()
+    #print("x mat: ", Xmat.columns)
     Y = data_clean["final_view"] #.to_numpy()
     Xmat_train_and_val, Xmat_test, Y_train_and_val, Y_test = train_test_split(Xmat, Y, test_size=0.2, random_state=42)
     Xmat_train, Xmat_val, Y_train, Y_val = train_test_split(Xmat_train_and_val, Y_train_and_val, test_size=0.2, random_state=42)
@@ -124,7 +125,7 @@ def load_bilibili_data(standardize=True):
                 Xmat_val[colname] = (Xmat_val[colname] - mean) / std
                 Xmat_test[colname] = (Xmat_test[colname] - mean) / std
 
-    return Xmat_train_and_val, Y_train_and_val, Xmat_train, Xmat_val, Xmat_test, Y_train, Y_val, Y_test
+    return Xmat_train_and_val.sort_index(), Y_train_and_val.sort_index(), Xmat_train.sort_index(), Xmat_val.sort_index(), Xmat_test.sort_index(), Y_train.sort_index(), Y_val.sort_index(), Y_test.sort_index()
 
 
 load_bilibili_data()
