@@ -1,0 +1,98 @@
+Best val_loss So Far: 9914789.5
+Total elapsed time: 1d 03h 41m 46s
+
+Results summary
+Results in tuner/keras_nn_tuner
+
+Showing 10 best trials
+<keras_tuner.engine.objective.Objective object at 0x14dbbd1f0>
+
+Trial summary
+Hyperparameters:
+dropout: True
+dropout_prob: 0.2
+First Hidden Layer: 352
+Second Hidden Layer: 224
+lr: 0.005579936781430615
+Score: 9914789.5
+
+Trial summary
+Hyperparameters:
+dropout: False
+dropout_prob: 0.30000000000000004
+First Hidden Layer: 416
+Second Hidden Layer: 160
+lr: 0.00946032233003827
+Score: 10588395.0
+
+Trial summary
+Hyperparameters:
+dropout: True
+dropout_prob: 0.2
+First Hidden Layer: 256
+Second Hidden Layer: 80
+lr: 0.008153809124911116
+Score: 11182344.0
+
+Trial summary
+Hyperparameters:
+dropout: True
+dropout_prob: 0.2
+First Hidden Layer: 320
+Second Hidden Layer: 160
+lr: 0.003269038958697772
+Score: 11437768.0
+
+Trial summary
+Hyperparameters:
+dropout: False
+dropout_prob: 0.30000000000000004
+First Hidden Layer: 352
+Second Hidden Layer: 80
+lr: 0.009807310652433296
+Score: 11582460.5
+
+Trial summary
+Hyperparameters:
+dropout: False
+dropout_prob: 0.2
+First Hidden Layer: 64
+Second Hidden Layer: 160
+lr: 0.007905691389716933
+Score: 12236178.0
+
+Trial summary
+Hyperparameters:
+dropout: False
+dropout_prob: 0.2
+First Hidden Layer: 64
+Second Hidden Layer: 240
+lr: 0.0032029709329172997
+Score: 12440740.0
+
+Trial summary
+Hyperparameters:
+dropout: True
+dropout_prob: 0.2
+First Hidden Layer: 320
+Second Hidden Layer: 224
+lr: 0.0021418200870065777
+Score: 12458992.5
+
+Trial summary
+Hyperparameters:
+dropout: True
+dropout_prob: 0.2
+First Hidden Layer: 96
+Second Hidden Layer: 144
+lr: 0.008053623177641262
+Score: 12530971.0
+
+Trial summary
+Hyperparameters:
+dropout: False
+dropout_prob: 0.30000000000000004
+First Hidden Layer: 480
+Second Hidden Layer: 144
+lr: 0.002117796522475039
+Score: 12539900.5

@@ -289,14 +289,14 @@ def fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val):
     [32, 16, 1], no dropout, relu, adam -> 0.81 on validation.
     '''
     model = Sequential()
-    model.add(Dense(256, input_dim=len(Xmat_train.columns), use_bias=True, bias_initializer="zeros", kernel_initializer='normal', activation='relu'))
+    model.add(Dense(352, input_dim=len(Xmat_train.columns), use_bias=True, bias_initializer="zeros", kernel_initializer='normal', activation='relu'))
     model.add(Dropout(0.2))
-    model.add(Dense(128, activation='relu'))
+    model.add(Dense(224, activation='relu'))
     model.add(Dropout(0.2))
     model.add(Dense(1, activation='linear'))
 
     # set up an SGD optimizer with custom learning rate
-    sgd = SGD(learning_rate=0.1, clipvalue=0.1)
+    sgd = SGD(learning_rate=0.005579936781430615, clipvalue=0.5)
 
     model.compile(loss='mse', optimizer=sgd, metrics=[RSquare()])
 
@@ -306,8 +306,8 @@ def fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val):
 
     history = model.fit(Xmat_train,
                         Y_train,
-                        batch_size=num_of_rows,
-                        epochs=2000,
+                        batch_size=64,
+                        epochs=1000,
                         validation_data=(Xmat_val, Y_val))
 
     r_square = history.history['r_square']
@@ -431,7 +431,7 @@ def main():
     # Create a list where train data indices are -1 and validation data indices are 0
     split_index = [-1 if x in Xmat_train.index else 0 for x in Xmat_train_and_val.index]
 
-    grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val)
+    # grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val)
 
 
     # fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val)
@@ -442,7 +442,7 @@ def main():
 
     # fit_random_forest(Xmat_train_and_val, Y_train_and_val, split_index)
 
-    # fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val)
+    fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val)
 
 
 main()
