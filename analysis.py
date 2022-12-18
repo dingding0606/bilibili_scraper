@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import random
+import os
 import math
 from data_loader import load_bilibili_data
 from sklearn.linear_model import LinearRegression
@@ -24,6 +25,9 @@ import keras_tuner
 from sklearn.model_selection import cross_val_score
 from tensorflow.random import set_seed
 
+from keras import backend as K
+import tensorflow as tf
+
 def fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val):
     # ==================================
     # BASELINE MODEL: LINEAR REGRESSION
@@ -38,6 +42,9 @@ def fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val):
     r_squared_val = baseline_model.score(Xmat_val, Y_val)
     print('R-sqaured on validation set:', r_squared_val)
 
+    coefficients = pd.DataFrame({"Feature":Xmat_train.columns, "Coefficients":np.transpose(baseline_model.coef_)})
+
+    print(coefficients)
 
     # squares
 
@@ -289,9 +296,9 @@ def fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val):
     [32, 16, 1], no dropout, relu, adam -> 0.81 on validation.
     '''
     model = Sequential()
-    model.add(Dense(352, input_dim=len(Xmat_train.columns), use_bias=True, bias_initializer="zeros", kernel_initializer='normal', activation='relu'))
+    model.add(Dense(352, input_dim=len(Xmat_train.columns), kernel_initializer='random_normal', activation='relu'))
     model.add(Dropout(0.2))
-    model.add(Dense(224, activation='relu'))
+    model.add(Dense(224, kernel_initializer='random_normal', activation='relu'))
     model.add(Dropout(0.2))
     model.add(Dense(1, activation='linear'))
 
@@ -323,12 +330,18 @@ def fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val):
     plt.legend()
     plt.show()
 
-    # build_neural_network(keras_tuner.HyperParameters())
+    loss = history.history['loss']
+    val_loss = history.history['val_loss']
+    epochs = range(1, len(r_square) + 1)
 
+    plt.plot(epochs, loss, 'y', label='Training Loss')
+    plt.plot(epochs, val_loss, 'r', label='Validation Loss')
 
-    # print(model.evaluate(Xmat_val, Y_val))
-
-
+    plt.title('Training and validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('MSE Loss')
+    plt.legend()
+    plt.show()
 
 
 
@@ -341,6 +354,7 @@ def grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val):
         objective="val_loss",
         max_trials=100,
         executions_per_trial=2,
+        seed=42,
         overwrite=True,
         directory="tuner",
         project_name="keras_nn_tuner",
@@ -369,6 +383,100 @@ def grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val):
     # best_model.build(input_shape=(None, 28, 28))
     # best_model.summary()
 
+
+def build_neural_network_old(hp):
+    INPUT_DIM = 29
+    model = Sequential()
+
+    # Tune the number of layers
+    # for i in range(hp.Int("num_layers", 1, 3)):
+    #     model.add(Dense(units=hp.Int(f"units_{i}", min_value=32, max_value=512, step=32),
+    #                     input_dim=input_dim,
+    #                     kernel_initializer='random_normal',
+    #                     activation='relu'))
+    #
+    #     if hp.Boolean("dropout"):
+    #         model.add(Dropout(rate=0.25))
+
+    dropout_prob = hp.Float("dropout_prob", min_value=0.1, max_value=0.5, step=0.1)
+
+    # Hidden Layer 1
+    model.add(Dense(units=hp.Int("First Hidden Layer", min_value=200, max_value=400, step=32),
+                    input_dim=INPUT_DIM,
+                    kernel_initializer='random_normal',
+                    activation='relu'))
+
+    if apply_dropout:
+        model.add(Dropout(rate=dropout_prob))
+
+    # Hidden Layer 2
+    model.add(Dense(units=hp.Int("Second Hidden Layer", min_value=100, max_value=300, step=32),
+                    kernel_initializer='random_normal',
+                    activation='relu'))
+
+    if apply_dropout:
+        model.add(Dropout(rate=dropout_prob))
+
+    # Output Layer
+    model.add(Dense(1, activation='linear'))
+
+    # Learning rate choices: 0.0001, 0.001, 0.01
+    learning_rate = hp.Float("lr", min_value=1e-3, max_value=1e-2, sampling="log")
+    sgd = SGD(learning_rate=learning_rate, clipvalue=0.5)
+
+    model.compile(loss='mse', optimizer=sgd, metrics=[RSquare()])
+
+    return model
+
+
+def test_final_model(Xmat_train, Y_train, Xmat_val, Y_val, Xmat_test, Y_test):
+
+    model = Sequential()
+    model.add(Dense(352, input_dim=len(Xmat_train.columns), kernel_initializer='random_normal', activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(224, kernel_initializer='random_normal', activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(1, activation='linear'))
+
+    # set up an SGD optimizer with custom learning rate
+    sgd = SGD(learning_rate=0.005579936781430615, clipvalue=0.5)
+
+    model.compile(loss='mse', optimizer=sgd, metrics=[RSquare()])
+
+    model.summary()
+
+    num_of_rows = len(Xmat_train)
+
+    model.fit(Xmat_train,
+                Y_train,
+                batch_size=64,
+                epochs=441,
+                validation_data=(Xmat_val, Y_val))
+
+    # evaluate the model using test set
+    score = model.evaluate(Xmat_test, Y_test)
+    print('Test loss:', score[0])
+    print('Test R^2:', score[1])
+
+    # make a prediction
+    Y_test_predict = model.predict(Xmat_test)
+    Y_test_predict = pd.Series(Y_test_predict.transpose()[0], name='pred')
+    Y_test = Y_test.reset_index(drop=True)
+    df = pd.concat([Y_test, Y_test_predict], axis=1)
+
+    df['absolute_diff'] = abs(df['final_view'] - df['pred'])
+
+    df['percent_error'] = df['absolute_diff'] / df['final_view']
+
+    df = df.sort_values(by=['final_view'], ascending=False)
+
+    # print(df.to_string())
+
+    df = df.sort_values(by=['pred'], ascending=False)
+
+    # print(df.to_string())
+
+    # print("avg percent error:", df['percent_error'].mean())
 
 
 
@@ -420,11 +528,35 @@ def build_neural_network(hp):
 
 def main():
 
+    seed_value = 42
+
+    # 1. Set the `PYTHONHASHSEED` environment variable at a fixed value
+    os.environ['PYTHONHASHSEED']=str(seed_value)
+
+    # 2. Set the `python` built-in pseudo-random generator at a fixed value
+    random.seed(seed_value)
+
+    # 3. Set the `numpy` pseudo-random generator at a fixed value
+    np.random.seed(seed_value)
+
+    # 4. Set the `tensorflow` pseudo-random generator at a fixed value
     # Set Tensorflow global random seed
     set_seed(42)
 
+    # 5. Configure a new global `tensorflow` session
+
+    # session_conf = tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+    # sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+    # K.set_session(sess)
+    # for later versions:
+    session_conf = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=1)
+    sess = tf.compat.v1.Session(graph=tf.compat.v1.get_default_graph(), config=session_conf)
+    tf.compat.v1.keras.backend.set_session(sess)
+
+
+
     # All of those are pandas objects
-    Xmat_train_and_val, Y_train_and_val, Xmat_train, Xmat_val, Xmat_test, Y_train, Y_val, Y_test = load_bilibili_data()
+    Xmat_train_and_val, Y_train_and_val, Xmat_train, Xmat_val, Xmat_test, Y_train, Y_val, Y_test = load_bilibili_data(abalation=True)
 
     # ns_Xmat_train_and_val, ns_Y_train_and_val, ns_Xmat_train, ns_Xmat_val, ns_Xmat_test, ns_Y_train, ns_Y_val, ns_Y_test = load_bilibili_data(standardize=False)
 
@@ -432,7 +564,7 @@ def main():
     split_index = [-1 if x in Xmat_train.index else 0 for x in Xmat_train_and_val.index]
 
     # grid_search_neural_network(Xmat_train, Y_train, Xmat_val, Y_val)
-
+    print(Xmat_train.columns)
 
     # fit_linear_regression(Xmat_train, Y_train, Xmat_val, Y_val)
     #
@@ -442,7 +574,10 @@ def main():
 
     # fit_random_forest(Xmat_train_and_val, Y_train_and_val, split_index)
 
-    fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val)
+    # fit_neural_network_keras(Xmat_train, Y_train, Xmat_val, Y_val)
+
+    test_final_model(Xmat_train, Y_train, Xmat_val, Y_val, Xmat_test, Y_test)
+
 
 
 main()

@@ -17,7 +17,7 @@ def memeness(title):
     '''
     return title.count(' ')
 
-def load_bilibili_data(standardize=True):
+def load_bilibili_data(standardize=True, abalation=False):
     '''
     Helper method for loading Bilibili video data
     '''
@@ -87,6 +87,10 @@ def load_bilibili_data(standardize=True):
 
     # Train, Test, Validation Split
     Xmat = data_clean.drop(columns=["final_view"]) #.to_numpy()
+
+    if abalation:
+        Xmat = Xmat.drop(columns=["view"])
+
     #print("x mat: ", Xmat.columns)
     Y = data_clean["final_view"] #.to_numpy()
     Xmat_train_and_val, Xmat_test, Y_train_and_val, Y_test = train_test_split(Xmat, Y, test_size=0.2, random_state=42)
